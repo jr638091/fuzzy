@@ -86,7 +86,7 @@ class Membership:
 
         def get_interval(self):
             return [self.l_min, self.l_max]
-        
+
         def __call__(self, x):
             if x <= self.l_min or x >= self.l_max:
                 raise f'{x} fuera del dominio [{self.l_min}, {self.l_max}]'
@@ -94,31 +94,35 @@ class Membership:
 
 
 class FuzzyModel:
-    defuzzy_methods = {}
     rules = []
     var = {}
-    input_values = []
+    input_values = {}
 
     def __init__(self, aggregation="TSK", defuzzy=None):
+        self.aggregation_methods = {
+            'TSK': self.takagi_sugeno_kang,
+            'Tsuka': self.tsukamoto
+            }
+        self.defuzzy_methods = {None: None}
         if aggregation not in self.aggregation_methods:
             raise f'Metodo de agregación no definido: {aggregation}'
         if defuzzy and defuzzy not in self.defuzzy_methods:
             raise f'Metodo de desifusificación no definido: {defuzzy}'
         self.aggregation = self.aggregation_methods[aggregation]
         self.defuzzy = self.defuzzy_methods[defuzzy]
-        self.aggregation_methods = {
-            'TSK': takagi_sugeno_kang,
-            'Tsuka': tsukamoto
-            }
 
     def add_input(self, name, var_type, value):
         self.input_values[name] = {
                 'var_type': var_type,
-                'm_value': [f(value) for f in self.var[var_type]['m_function']]
+                'm_value': {
+                    i: self.var[var_type][i](value) for i in self.var[var_type]
+                    }
             }
 
     def add_var(self, var_type, states, m_function):
-        self.var[var_type] = {"states": states, "m_function": m_function}
+        self.var[var_type] = {
+            states[i]: m_function[i] for i in range(len(states))
+            }
 
     def add_rule(self, pre, post):
         self.rules.append({pre: post})
@@ -129,6 +133,36 @@ class FuzzyModel:
     def tsukamoto(self):
         pass
 
+    def eval(self, pre):
+        result = None
+        term = []
+        op = None
+        negate = False
+        pre = pre.split()
+        for i in pre:
+            if i == 'not':
+                negate = True
+                continue
+            if i == 'and' or i == 'or':
+                op = i
+                continue
+            if i == 'is':
+                continue
+            term.append(i)
+            if len(term) == 2:
+                e = self.input_values[term[0]]['m_value'][term[1]]
+                term = []
+                if negate:
+                    e = 1 - e
+                    negate = False
+                if op is None:
+                    result = e
+                else:
+                    if op == 'and':
+                        result = min(result, e)
+                    else:
+                        result = max(result, e)
+        return result
+
 if __name__ == '__main__':
-    t = Membership.trimf(1, 2, 3, 0, 4)
-    print(t.get_interval(), t(2))
+    pass
