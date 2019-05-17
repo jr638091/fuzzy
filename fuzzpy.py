@@ -3,46 +3,97 @@ from numpy import exp
 
 class Membership:
 
-    def trimf(a, b, c):
-        def _trimf(x):
-            if x <= a or x >= c:
-                return 0
-            if a <= x <= b:
-                return (x - a)/(b - a)
-            if b <= x <= c:
-                return (c - x)/(c - b)
-        return _trimf
+    class trimf:
+        def __init__(self, a, b, c, l_min, l_max):
+            self.a = a
+            self.b = b
+            self.c = c
+            self.l_min = l_min
+            self.l_max = l_max
 
-    def trapmf(a, b, c, d):
-        def _trapmf(x):
-            if x <= a or x >= d:
+        def get_interval(self):
+            return [self.l_min, self.l_max]
+
+        def __call__(self, x):
+            if x <= self.l_min or x >= self.l_max:
+                raise f'{x} fuera del dominio [{self.l_min}, {self.l_max}]'
+            if x <= self.a or x >= self.c:
                 return 0
-            if a <= x <= b:
-                return (x - a)/(b - a)
-            if b <= x <= c:
+            if self.a <= x <= self.b:
+                return (x - self.a)/(self.b - self.a)
+            if self.b <= x <= self.c:
+                return (self.c - x)/(self.c - self.b)
+
+    class trapmf:
+        def __init__(self, a, b, c, d, l_min, l_max):
+            self.a = a
+            self.b = b
+            self.c = c
+            self.d = d
+            self.l_min = l_min
+            self.l_max = l_max
+
+        def get_interval(self):
+            return [self.l_min, self.l_max]
+
+        def __call__(self, x):
+            if x <= self.l_min or x >= self.l_max:
+                raise f'{x} fuera del dominio [{self.l_min}, {self.l_max}]'
+            if x <= self.a or x >= self.d:
+                return 0
+            if self.a <= x <= self.b:
+                return (x - self.a)/(self.b - self.a)
+            if self.b <= x <= self.c:
                 return 1
-            if c <= x <= d:
-                return (d - x)/(d - c)
-        return _trapmf
+            if self.c <= x <= self.d:
+                return (self.d - x)/(self.d - self.c)
 
-    def gaussmf(width, center):
-        def _gbellmf(x):
-            return exp(-0.5*((x-center)/width)**2)
-        return _gbellmf
+    class gaussmf:
+        def __init__(self, width, center, l_min, l_max):
+            self.width = width
+            self.center = center
+            self.l_min = l_min
+            self.l_max = l_max
 
-    def gbellmf(width, m, center):
-        def _gbellmf(x):
-            return 1/(1 + abs((x-center)/width)**(2*m))
-        return _gbellmf
+        def get_interval(self):
+            return [self.l_min, self.l_max]
 
-    def sigmf(m, center):
-        def _sigmf(x):
-            return 1/(1 + exp(-m*(x - center)))
-        return _sigmf
+        def __call__(self, x):
+            if x <= self.l_min or x >= self.l_max:
+                raise f'{x} fuera del dominio [{self.l_min}, {self.l_max}]'
+            return exp(-0.5*((x-self.center)/self.width)**2)
+
+    class gbellmf:
+        def __init__(self, width, m, center, l_min, l_max):
+            self.width = width
+            self.m = m
+            self.center = center
+            self.l_min = l_min
+            self.l_max = l_max
+
+        def get_interval(self):
+            return [self.l_min, self.l_max]
+
+        def __call__(self, x):
+            return 1/(1 + abs((x-self.center)/self.width)**(2*self.m))
+
+    class sigmf:
+        def __init__(self, m, center, l_min, l_max):
+            self.m = m
+            self.center = center
+            self.l_min = l_min
+            self.l_max = l_max
+
+        def get_interval(self):
+            return [self.l_min, self.l_max]
+        
+        def __call__(self, x):
+            if x <= self.l_min or x >= self.l_max:
+                raise f'{x} fuera del dominio [{self.l_min}, {self.l_max}]'
+            return 1/(1 + exp(-self.m*(x - self.center)))
 
 
 class FuzzyModel:
-    aggregation_methods = {'TSK': FuzzyModel.takagi_sugeno_kang, 'Tsuka'}
     defuzzy_methods = {}
     rules = []
     var = {}
@@ -55,6 +106,10 @@ class FuzzyModel:
             raise f'Metodo de desifusificación no definido: {defuzzy}'
         self.aggregation = self.aggregation_methods[aggregation]
         self.defuzzy = self.defuzzy_methods[defuzzy]
+        self.aggregation_methods = {
+            'TSK': takagi_sugeno_kang,
+            'Tsuka': tsukamoto
+            }
 
     def add_input(self, name, var_type, value):
         self.input_values[name] = {
@@ -75,4 +130,5 @@ class FuzzyModel:
         pass
 
 if __name__ == '__main__':
-    pass
+    t = Membership.trimf(1, 2, 3, 0, 4)
+    print(t.get_interval(), t(2))
