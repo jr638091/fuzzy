@@ -109,7 +109,9 @@ class FuzzyModel:
             None: None,
             'centroid': self.centroid,
             'bis': self.bisectriz,
-            'MoM': self.MoM
+            'MoM': self.MoM,
+            'LoM': self.LoM,
+            'GoM': self.GoM
             }
         if aggregation not in self.aggregation_methods:
             raise f'Metodo de agregación no definido: {aggregation}'
@@ -202,16 +204,31 @@ class FuzzyModel:
         return u/d
 
     def MoM(self, f):
+        interval = self.get_maximun(f)
+        return interval[1]
+    
+    def LoM(self, f):
+        interval = self.get_maximun(f)
+        return interval[0]
+
+    def GoM(self, f):
+        interval = self.get_maximun(f)
+        return (interval[1] + interval[0])/2
+
+    def get_maximun(self, f):
+        from numpy import fabs
         interval = self.get_interval
-        minimun = [10**9, 10**9]
-        maximun = [-10**9, -10**9]
+        minimum, maximum = 10**9, -10**9
+        value = -10**9
         s = linspace(interval[0], interval[1], 10**4)
         for i in s:
-            if minimun[0] > f(i) and minimun[1] > i:
-                minimun = [f(i), i]
-            if maximun[0] < f(i) and maximun[1] < i:
-                maximun = [f(i), i]
-        return maximun[1]
+            if f(i) > value:
+                minimum = maximum = i 
+                value = f(i)
+            if abs(f(i) - value) < 10**-9:
+                minimum = min(minimum, i)
+                maximum = max(maximum, i)
+        return minimum, maximum
 
     def bisectriz(self, f):
         from math import fabs
