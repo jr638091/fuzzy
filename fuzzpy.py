@@ -16,8 +16,7 @@ class Membership:
 
         def __call__(self, x):
             if x < self.l_min or x > self.l_max:
-                print(str(x) + ' fuera del dominio [' + str(self.l_min) + str(self.l_max))
-                raise str(x) + ' fuera del dominio [' + str(self.l_min) + str(self.l_max)
+                raise 'argumento fuera del dominio'
             if x <= self.a or x >= self.c:
                 return 0
             if self.a <= x <= self.b:
@@ -39,7 +38,7 @@ class Membership:
 
         def __call__(self, x):
             if x < self.l_min or x > self.l_max:
-                raise str(x) + ' fuera del dominio [' + str(self.l_min) + str(self.l_max)
+                raise 'argumento fuera del dominio'
             if x <= self.a or x >= self.d:
                 return 0
             if self.a <= x <= self.b:
@@ -61,7 +60,7 @@ class Membership:
 
         def __call__(self, x):
             if x < self.l_min or x > self.l_max:
-                raise str(x) + ' fuera del dominio [' + str(self.l_min) + str(self.l_max)
+                raise 'argumento fuera del dominio'
             return exp(-0.5*((x-self.center)/self.width)**2)
 
     class gbellmf:
@@ -77,7 +76,7 @@ class Membership:
 
         def __call__(self, x):
             if x < self.l_min or x > self.l_max:
-                raise str(x) + ' fuera del dominio [' + str(self.l_min) + str(self.l_max)
+                raise 'argumento fuera del dominio'
             return 1/(1 + abs((x-self.center)/self.width)**(2*self.m))
 
     class sigmf:
@@ -92,7 +91,7 @@ class Membership:
 
         def __call__(self, x):
             if x < self.l_min or x > self.l_max:
-                raise str(x) + ' fuera del dominio [' + str(self.l_min) + str(self.l_max)
+                raise 'argumento fuera del dominio'
             return 1/(1 + exp(-self.m*(x - self.center)))
 
 
