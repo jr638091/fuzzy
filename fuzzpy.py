@@ -1,4 +1,4 @@
-from numpy import exp
+from numpy import exp, linspace
 
 
 class Membership:
@@ -15,8 +15,9 @@ class Membership:
             return [self.l_min, self.l_max]
 
         def __call__(self, x):
-            if x <= self.l_min or x >= self.l_max:
-                raise f'{x} fuera del dominio [{self.l_min}, {self.l_max}]'
+            if x < self.l_min or x > self.l_max:
+                print(str(x) + ' fuera del dominio [' + str(self.l_min) + str(self.l_max))
+                raise str(x) + ' fuera del dominio [' + str(self.l_min) + str(self.l_max)
             if x <= self.a or x >= self.c:
                 return 0
             if self.a <= x <= self.b:
@@ -37,8 +38,8 @@ class Membership:
             return [self.l_min, self.l_max]
 
         def __call__(self, x):
-            if x <= self.l_min or x >= self.l_max:
-                raise f'{x} fuera del dominio [{self.l_min}, {self.l_max}]'
+            if x < self.l_min or x > self.l_max:
+                raise str(x) + ' fuera del dominio [' + str(self.l_min) + str(self.l_max)
             if x <= self.a or x >= self.d:
                 return 0
             if self.a <= x <= self.b:
@@ -59,8 +60,8 @@ class Membership:
             return [self.l_min, self.l_max]
 
         def __call__(self, x):
-            if x <= self.l_min or x >= self.l_max:
-                raise f'{x} fuera del dominio [{self.l_min}, {self.l_max}]'
+            if x < self.l_min or x > self.l_max:
+                raise str(x) + ' fuera del dominio [' + str(self.l_min) + str(self.l_max)
             return exp(-0.5*((x-self.center)/self.width)**2)
 
     class gbellmf:
@@ -75,6 +76,8 @@ class Membership:
             return [self.l_min, self.l_max]
 
         def __call__(self, x):
+            if x < self.l_min or x > self.l_max:
+                raise str(x) + ' fuera del dominio [' + str(self.l_min) + str(self.l_max)
             return 1/(1 + abs((x-self.center)/self.width)**(2*self.m))
 
     class sigmf:
@@ -88,8 +91,8 @@ class Membership:
             return [self.l_min, self.l_max]
 
         def __call__(self, x):
-            if x <= self.l_min or x >= self.l_max:
-                raise f'{x} fuera del dominio [{self.l_min}, {self.l_max}]'
+            if x < self.l_min or x > self.l_max:
+                raise str(x) + ' fuera del dominio [' + str(self.l_min) + str(self.l_max)
             return 1/(1 + exp(-self.m*(x - self.center)))
 
 
@@ -103,7 +106,12 @@ class FuzzyModel:
             'TSK': self.takagi_sugeno_kang,
             'Tsuka': self.tsukamoto
             }
-        self.defuzzy_methods = {None: None}
+        self.defuzzy_methods = {
+            None: None,
+            'centroid': self.centroid,
+            'bis': self.bisectriz,
+            'MoM': self.MoM
+            }
         if aggregation not in self.aggregation_methods:
             raise f'Metodo de agregación no definido: {aggregation}'
         if defuzzy and defuzzy not in self.defuzzy_methods:
@@ -125,16 +133,31 @@ class FuzzyModel:
             }
 
     def add_rule(self, pre, post):
-        self.rules.append({pre: post})
+        self.rules.append([pre, post])
 
     def takagi_sugeno_kang(self):
-        pass
+        w = 0
+        wf = 0
+        for i in self.rules:
+            e = tuple(self.eval(i[0]).values())
+            wf += i[1](*e)
+            w += min(e)
+        return wf/w
 
     def tsukamoto(self):
-        pass
+        w = 0
+        wz = 0
+        for i in self.rules:
+            f = i[1].split(" is ")
+            f = self.var[f[0]][f[1]]
+            self.get_interval = f.get_interval()
+            e = min(tuple(self.eval(i[0]).values()))
+            w += e
+            wz += e*self.defuzzy(lambda x: min(e, f(x)))
+        return wz/w
 
     def eval(self, pre):
-        result = None
+        result = {}
         term = []
         op = None
         negate = False
@@ -151,18 +174,69 @@ class FuzzyModel:
             term.append(i)
             if len(term) == 2:
                 e = self.input_values[term[0]]['m_value'][term[1]]
+                v = term[0]
                 term = []
                 if negate:
                     e = 1 - e
                     negate = False
-                if op is None:
-                    result = e
+                if op is None or v not in result:
+                    result[v] = e
                 else:
                     if op == 'and':
-                        result = min(result, e)
+                        result[v] = min(result[v], e)
                     else:
-                        result = max(result, e)
+                        result[v] = max(result[v], e)
         return result
+
+    def solve(self):
+        return self.aggregation()
+
+    def centroid(self, f):
+        interval = self.get_interval
+        u = 0
+        d = 0
+        for i in linspace(interval[0], interval[1], 10**4):
+            u += i*f(i)
+            d += f(i)
+        if u == 0:
+            return 0
+        return u/d
+
+    def MoM(self, f):
+        interval = self.get_interval
+        minimun = [10**9, 10**9]
+        maximun = [-10**9, -10**9]
+        s = linspace(interval[0], interval[1], 10**4)
+        for i in s:
+            if minimun[0] > f(i) and minimun[1] > i:
+                minimun = [f(i), i]
+            if maximun[0] < f(i) and maximun[1] < i:
+                maximun = [f(i), i]
+        return maximun[1]
+
+    def bisectriz(self, f):
+        from math import fabs
+        interval = self.get_interval
+        l = interval[0]
+        r = interval[1]
+        m = 0
+        for _ in range(100):
+            m = (l + r)/2
+            a, b = self.area(f, [interval[0], m]), self.area(f, [m, interval[1]])
+            if fabs(a - b) < 10**-6:
+                return m
+            if a > b:
+                r = m
+            else:
+                l = m
+        return m
+
+    def area(self, f, interval):
+        a = 0
+        s = linspace(interval[0], interval[1], 100)
+        for i in s:
+            a += f(i)
+        return a
 
 if __name__ == '__main__':
     pass
